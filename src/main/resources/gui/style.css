@@ -1,0 +1,20 @@
+.stationButton {
+    -fx-background-color: #E0E6B2;
+    -fx-border-radius: 0;
+    -fx-padding: 0;
+}
+
+.option-tab > .title {
+    -fx-background-color: white;
+    -fx-border-color: rgba(59, 59, 59, 0.1);
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+
+.accordion {
+    -fx-border-radius: 2;
+    -fx-background-radius: 10;
+    -fx-background-color: #efefef;
+
+}

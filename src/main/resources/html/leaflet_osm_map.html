@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="">
+<head>
+    <title>Leaflet & OSM Map Demo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #map {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script>
+    let map;
+    var markers = L.markerClusterGroup({
+
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        removeOutsideVisibleBounds: false,
+        maxClusterRadius: 100,
+        disableClusteringAtZoom: 10,
+        unspiderfy: true,
+        iconCreateFunction: function(cluster) {
+            return L.divIcon({ html: '<div style=\"background-color:'+'rgba(60,143,204, 0.8);'
+                    +'\"><span>' + cluster.getChildCount() + '</span></div>',
+                className: 'marker-cluster', iconSize: new L.Point(40, 40) });
+        }
+    });
+    let idMarkers = {};
+    var javaScriptBridge; // must be declared as var (will not be correctly assigned in java with let keyword)
+    let route;
+    let routeMapped = false;
+    let previousRoute = [];
+    let isEditable = true;
+    let miscMarkers = {};
+    let prevWaypoints = [];
+    let rangeIndicator;
+    let selectedMarker;
+    let selectedMarkerId = -1;
+    let prevMarkerFavourite = false;
+
+    const selectedIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const blueIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const goldIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const greenIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const redIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const startIcon = new L.Icon({
+        iconUrl: '../images/Circle.png',
+        iconSize: [18, 18],
+        iconAnchor: [10, 10]
+    });
+
+    const endIcon = new L.Icon({
+        iconUrl: '../images/endMarker.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 50],
+        iconAnchor: [10, 42],
+        shadowSize: [41, 41]
+    });
+
+    /**
+     * This object can be returned to our java code, where we can call the functions we define inside it
+     */
+    let jsConnector = {
+        addMarker: addMarker,
+        addRoute: addRoute,
+        removeRoute: removeRoute,
+        initMap: initMap,
+        mapJourney: mapJourney,
+        addMiscMarker: addMiscMarker,
+        clearMiscMarker: clearMiscMarker,
+        clearMap: clearMap,
+        addRangeIndicator: addRangeIndicator,
+        removeRangeIndicator: removeRangeIndicator,
+        clearWaypoints: clearWaypoints,
+        setPrevMarkerFavourite: setPrevMarkerFavourite,
+        setSelectedMarkerId: setSelectedMarkerId
+    };
+
+    /**
+     * Removes the markers from the map.
+     * This only removes markers from the markers cluster layer which means
+     * selected markers and range markers aren't included.
+     */
+    function clearMap() {
+        markers.clearLayers();
+    }
+
+    /**
+     * Maps the given journey on the map
+     * @param waypoints the points on the route
+     * @param editable whether the journey is editable or not.
+     */
+    function mapJourney(waypoints, editable) {
+        let waypointArray = waypoints.split("//");
+        previousRoute = [];
+        isEditable = editable;
+        let latlong;
+        let m;
+        for (let i = 0; i < waypointArray.length; i++) {
+            latlong = waypointArray[i].split("#");
+            m = new L.latLng(latlong[0], latlong[1]);
+            // routeLine.push([latlong[0], latlong[1]]);
+            previousRoute.push(m);
+        }
+        addRoute();
+    }
+
+    /**
+     * Returns the html for the button dialogs based on the text passed.
+     * Puts the text passed into a paragraph tag and includes a button that adds
+     * the current station to the route.
+     * @param text The address/text to be displayed in the popup
+     * @returns {string} The raw string HTML for the button.
+     */
+    function getButtonHTML(text) {
+        return '<!DOCTYPE html>\n' +
+            '<html>\n' +
+            '<head>\n' +
+            '<link rel="stylesheet" href="../gui/popupButtons.css">\n' +
+            '</head>' +
+            '<body class="popupBody">\n' +
+            '<p>' + text + '</p>\n' +
+            '<button name="submit" class="addToRoute" type="submit" value="Add to Route" >Add to Route</button>\n' +
+            '</body>\n' +
+            '</html>\n';
+    }
+
+
+    /**
+     * creates and initialises the Google map, also defines on click event that calls java code
+     * Adds the autocomplete address search bar to the map
+     */
+    function initMap() {
+        var corner1 = L.latLng(-48.632908, 162.949218);
+        var corner2 = L.latLng(-33.57801, 181.73628);
+        var bounds = L.latLngBounds(corner1, corner2);
+
+        console.log = function(message) {
+            javaScriptBridge.log(message);
+        }
+        let mapOptions = {
+            center: [-43.522, 172.5794],
+            maxBounds: bounds,
+            zoom: 8,
+            minZoom: 5,
+        }
+        map = new L.map('map', mapOptions);
+        new L.TileLayer('https://tile.csse.canterbury.ac.nz/hot/{z}/{x}/{y}.png', { // UCs tilemap server
+            attribution: 'Leaflet © OpenStreetMap contributors<br>Served by University of Canterbury'
+        }).addTo(map);
+        map.on('click', function (e) {
+
+            var latlng = map.mouseEventToLatLng(e.originalEvent);
+            javaScriptBridge.getLatLongFromClick(latlng.lat, latlng.lng);
+        })
+        map.attributionControl.setPrefix(false);
+
+
+
+        // Add autocomplete search bar to map
+        // Rewriting add marker function so can get address updated on click of marker
+        let options = {
+            geocoder: new L.Control.Geocoder.Nominatim({
+                geocodingQueryParams: {
+                    countrycodes: 'nz',
+                    focus: [-43.53, 172.64], // Focus on Christchurch, New Zealand
+                }
+            }),
+            defaultMarkGeocode: false,
+            autocomplete: true,
+
+        }
+        let geocoder = L.Control.geocoder(options)
+            .on('markgeocode', function(e) {
+                var address = e.geocode.name;
+                var latlng = e.geocode.center;
+
+                let buttonDialog = getButtonHTML(address);
+
+                let m = new L.Marker([latlng.lat, latlng.lng], {icon: redIcon})
+                m.bindPopup(buttonDialog).on("popupopen", (a) => {
+                    var popUp = a.target.getPopup()
+
+                    popUp.getElement().querySelector(".addToRoute").addEventListener("click", e =>
+                    {javaScriptBridge.addToRoute(latlng.lat, latlng.lng);});
+
+                });
+
+                m.on('popupclose', e => {
+                    map.removeLayer(e.target);
+                });
+
+                markers.addLayer(m);
+
+                // Zoom to marker bounds
+                var markerBounds = e.geocode.bbox;
+                map.fitBounds(markerBounds);
+
+            })
+            .addTo(map);
+
+        map.addLayer(markers);
+
+    }
+
+    /**
+     * Adds a marker to the map.
+
+     * @param lat latitude
+     * @param lng longitude
+     * @param label label of the marker (integers are reserved for journey planning)
+     */
+    function addMiscMarker(lat, lng, label) {
+
+        let searchPopupText = '<html>\n<body>\n<p style="text-align:center;">Range Marker</p>\n</body>\n' +
+            '</html>'
+
+        if (miscMarkers[label] !== undefined) {
+            miscMarkers[label].remove(map);
+        }
+
+        // Check if the misc marker needs the default green icon, or if the label is an
+        // integer (used for journey mapping), checks for whether it is the end marker.
+        let icon;
+        icon = greenIcon;
+        if (Number.isInteger(Number(label))) {
+            removeRoute();
+            if (!routeMapped && Number(label) === 1) {
+                icon = endIcon;
+            } else
+            icon = startIcon;
+        }
+
+        let m = new L.Marker(L.latLng(lat, lng), {icon: icon, draggable: true});
+
+        miscMarkers[label] = m;
+
+
+        // Update java when markers are dragged
+        m.on('dragend', function(event) {
+            var latlng = event.target.getLatLng();
+            javaScriptBridge.changeLatLongFromClick(latlng.lat, latlng.lng, label);
+        });
+
+        if (label === "search") {
+            m.bindPopup(searchPopupText).openPopup();
+        }
+
+        m.addTo(map);
+    }
+
+    /**
+     * Clears all waypoints for journey planning
+     */
+    function clearWaypoints() {
+        for (const [key, value] of Object.entries(miscMarkers)) {
+            if (Number.isInteger(Number(key))) {
+                value.remove(map);
+                delete miscMarkers[key];
+            }
+        }
+    }
+
+    /**
+     * Clears a specific marker
+
+     * @param label label of the marker
+     */
+    function clearMiscMarker(label) {
+        if (miscMarkers[label] !== undefined) {
+            miscMarkers[label].remove(map);
+        }
+        delete miscMarkers[label];
+    }
+
+    /**
+     * Called from main controller to set that the previous marker was a favourite to keep the colours
+     * consistent.
+     * @param favourite boolean whether the prev marker was favourited or not.
+     */
+    function setPrevMarkerFavourite(favourite) {
+        prevMarkerFavourite = favourite;
+    }
+
+    /**
+     * Called from main controller to set ID of the selected marker when coming from table view
+     * @param id id of the selected marker.
+     */
+    function setSelectedMarkerId(id, favourite) {
+
+        let newSelectedMarker = idMarkers[id];
+
+        changeSelectedMarker(selectedMarker, newSelectedMarker);
+
+        prevMarkerFavourite = favourite;
+        selectedMarkerId = id;
+        selectedMarker = newSelectedMarker;
+
+
+    }
+
+    /**
+     * Adds a circle to indicate the range of search from the lat and lng.
+
+     * @param lat latitude to place center of circle at
+     * @param lng longitude to place center of circle at
+     * @param radius radius of the circle
+     */
+    function addRangeIndicator(lat, lng, radius) {
+
+        if(radius !== 0 && miscMarkers["search"] !== undefined) {
+            // Colour comes from the green marker used for indicating search.
+            //let colourCode = "#24AD22";
+            let c = new L.circle([ lat, lng ], {
+                color : "#24AD22",
+                stroke : false,
+                fillColor : "#24AD22",
+                fillOpacity : 0.2,
+                radius: radius*1000
+            })
+
+            rangeIndicator = c;
+
+            rangeIndicator.addTo(map);
+        }
+    }
+
+    /**
+     * Clears the range indicator circle from the map.
+     */
+    function removeRangeIndicator() {
+
+        if (rangeIndicator != null) {
+            rangeIndicator.remove(map);
+            rangeIndicator = null;
+        }
+    }
+
+    /**
+     * Given the parameters, changes the currently selected marker on the GUI
+     * @param oldMarker the currently selected marker
+     * @param newMarker the new marker to be selected
+     */
+    function changeSelectedMarker(oldMarker, newMarker) {
+        if (oldMarker !== newMarker) {
+            if (oldMarker != null) {
+                if (prevMarkerFavourite) {
+                    oldMarker.setIcon(goldIcon);
+                    prevMarkerFavourite = false;
+                } else {
+                    oldMarker.setIcon(blueIcon);
+                }
+                oldMarker.remove(map);
+                markers.addLayer(oldMarker);
+            }
+
+            newMarker.setIcon(selectedIcon);
+            markers.removeLayer(newMarker);
+            newMarker.addTo(map);
+        }
+    }
+
+    /**
+     * Adds a marker to the map and stores it in the idMarkers array for later use (e.g. removal).
+
+     * @param id id of marker
+     * @param title tooltip to display on hover
+     * @param lat latitude to place marker at
+     * @param lng longitude to place marker at
+     */
+    function addMarker(id, title, lat, lng, favourited) {
+
+        let buttonDialog = getButtonHTML(title);
+
+        let options = {};
+
+        if (favourited) {
+            options = {icon: goldIcon};
+        }
+
+        if (selectedMarkerId === id) {
+            options = {icon: selectedIcon};
+        }
+
+        let m = new L.Marker([lat, lng], options);
+        m.bindPopup(buttonDialog);
+
+        m.on("popupopen", (a) => {
+            var popUp = a.target.getPopup();
+
+            popUp.getElement().querySelector(".addToRoute").addEventListener("click", e =>
+            {javaScriptBridge.addToRoute(lat, lng);});
+
+        });
+
+        // Add marker to map, and specify our own on click function
+        m.on('click', e => {
+            javaScriptBridge.getStationFromClick(id);
+            javaScriptBridge.getLatLongFromClick(lat, lng);
+
+            changeSelectedMarker(selectedMarker, e.target);
+
+            selectedMarker = e.target;
+            selectedMarkerId = id;
+
+            e.target.openPopup();
+
+            if(favourited) {
+                prevMarkerFavourite = true;
+            }
+        });
+
+        markers.addLayer(m);
+
+        idMarkers[id] = m;
+    }
+
+    /**
+     * Adds the route stored in previousRoute to the map.
+     */
+    function addRoute() {
+        if (previousRoute !== []) {
+            removeRoute();
+            if (isEditable) {
+                lineOptions = {
+                    styles: [{color: 'black', opacity: 0.15, weight: 9},
+                        {color: 'white', opacity: 0.8, weight: 6},
+                        {color: 'red', opacity: 1, weight: 2}],
+                    addWaypoints: true,
+                    missingRouteStyles: [{color: 'black', opacity: 0.15, weight: 7},
+                        {color: 'white', opacity: 0.6, weight: 4},
+                        {color: 'gray', opacity: 0.8, weight: 2, dashArray: '7,12'}]
+                };
+            } else {
+                lineOptions = {
+                    styles: [{color: 'black', opacity: 0.15, weight: 9},
+                        {color: 'white', opacity: 0.8, weight: 6},
+                        {color: 'green', opacity: 1, weight: 2}],
+                    addWaypoints: false,
+                    missingRouteStyles: [{color: 'black', opacity: 0.15, weight: 7},
+                        {color: 'white', opacity: 0.6, weight: 4},
+                        {color: 'gray', opacity: 0.8, weight: 2, dashArray: '7,12'}]
+                };
+            }
+            route = L.Routing.control({
+                waypoints: previousRoute,
+                // Specify UCs server for routing instead of the demonstration server used by default
+                serviceUrl: 'https://tile.csse.canterbury.ac.nz/route/v1',
+                routeWhileDragging: false,
+                lineOptions: lineOptions,
+                createMarker: function (i, waypoint, n) {
+                    let marker = L.marker(waypoint.latLng, {
+                        draggable: isEditable,
+                        icon: startIcon
+                    });
+
+                    // Makes the destination marker different
+                    if (i === n-1) {
+                        marker = L.marker(waypoint.latLng, {
+                            draggable: isEditable,
+                            icon: endIcon
+                        });
+                    }
+                    marker._zIndex = 100000;
+                    return marker;
+                }
+            });
+
+            // Store the current waypoints, to be checked against later
+            prevWaypoints = getLatLngs(route.getWaypoints());
+
+            // Updates java on route changed
+            route.on("routesfound", () => {
+                insertMarker(route.getWaypoints());
+            })
+            route.addTo(map);
+            routeMapped = true;
+        }
+    }
+
+    /**
+     * Updates the java when the route is edited.
+
+     * @param currWaypoints the current waypoints in the route
+     */
+    function insertMarker(currWaypoints) {
+        // For each current marker, check if it is different to the one stored previously.
+        for (let i = 0; i < currWaypoints.length; i++) {
+            if (!(currWaypoints[i].latLng.lat === prevWaypoints[i].lat &&
+                currWaypoints[i].latLng.lng === prevWaypoints[i].lng)) {
+                // If a waypoint is different, check if the length of waypoints is the same - that will determine
+                // whether a marker was updated or inserted.
+                let waypoint = currWaypoints[i];
+                if (currWaypoints.length !== prevWaypoints.length) {
+                    javaScriptBridge.insertWaypoint(waypoint.latLng.lat, waypoint.latLng.lng, i);
+                } else {
+                    javaScriptBridge.editWaypoint(waypoint.latLng.lat, waypoint.latLng.lng, i);
+                }
+                prevWaypoints = getLatLngs(route.getWaypoints());
+                break;
+            }
+        }
+    }
+
+    /**
+     * Helper function to get a list of lat and longs from waypoints
+
+     * @param wps waypoints to process
+     * @returns {[]} the lat and longs of the waypoint
+     */
+    function getLatLngs(wps) {
+        arrayOut = [];
+        for (let i = 0; i < wps.length; i++) {
+            let newLatLng = {};
+            newLatLng.lat = wps[i].latLng.lat;
+            newLatLng.lng = wps[i].latLng.lng;
+            arrayOut.push(newLatLng);
+        }
+        return arrayOut;
+    }
+
+    /**
+     * Removes the current route from the map, but keeps the instance, so it can be re-added without another api call
+     */
+    function removeRoute() {
+        if (route) {
+            route.remove(map);
+        }
+        routeMapped = false;
+    }
+
+</script>
+</body>
+</html>

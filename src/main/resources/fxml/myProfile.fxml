@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.effect.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.paint.*?>
+<?import javafx.scene.shape.*?>
+<?import javafx.scene.text.*?>
+
+<AnchorPane prefHeight="750.0" prefWidth="1200.0" style="-fx-background-color: white;" xmlns="http://javafx.com/javafx/16" xmlns:fx="http://javafx.com/fxml/1" fx:controller="journey.controller.ProfileMainController">
+    <BorderPane prefHeight="750.0" prefWidth="1200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+        <top>
+            <GridPane maxHeight="55.0" prefHeight="55.0" style="-fx-background-color: #88B181;" BorderPane.alignment="CENTER">
+                <columnConstraints>
+                    <ColumnConstraints hgrow="NEVER" maxWidth="144.0" minWidth="10.0" prefWidth="144.0" />
+                    <ColumnConstraints hgrow="ALWAYS" maxWidth="1.7976931348623157E308" minWidth="10.0" prefWidth="728.0" />
+                    <ColumnConstraints halignment="CENTER" hgrow="NEVER" maxWidth="100.0" minWidth="52.0" prefWidth="100.0" />
+                    <ColumnConstraints hgrow="NEVER" maxWidth="121.0" minWidth="100.0" prefWidth="100.0" />
+                    <ColumnConstraints hgrow="NEVER" maxWidth="140.0" minWidth="95.0" prefWidth="140.0" />
+                </columnConstraints>
+                <rowConstraints>
+                    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                </rowConstraints>
+                <effect>
+                    <DropShadow offsetY="4.0">
+                        <color>
+                            <Color red="0.23000000417232513" green="0.23000000417232513" blue="0.23000000417232513" opacity="0.24576270580291748" />
+                        </color>
+                    </DropShadow>
+                </effect>
+                <Button alignment="CENTER" minWidth="100.0" mnemonicParsing="false" onAction="#homeButton" prefHeight="30.0" prefWidth="100.0" styleClass="menu-button" stylesheets="@../gui/menuButton.css" text="Home" textFill="WHITE" GridPane.columnIndex="3" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+                    <font>
+                        <Font name="Roboto" size="16.0" />
+                    </font>
+                    <graphic>
+                        <HBox alignment="CENTER" prefHeight="40.0" prefWidth="40.0">
+                            <ImageView fx:id="homeImage" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
+                        </HBox>
+                    </graphic>
+                    <GridPane.margin>
+                        <Insets right="10.0" />
+                    </GridPane.margin>
+                    <GridPane.margin>
+                        <Insets />
+                    </GridPane.margin>
+                </Button>
+                <Rectangle arcHeight="10.0" arcWidth="10.0" fill="WHITE" height="45.0" stroke="BLACK" strokeType="INSIDE" strokeWidth="0.0" width="110.0" GridPane.halignment="LEFT" GridPane.hgrow="NEVER">
+                    <GridPane.margin>
+                        <Insets left="10.0" />
+                    </GridPane.margin></Rectangle>
+                <ImageView fx:id="journeyImage" fitHeight="40.0" fitWidth="105.0" onMouseClicked="#homeButton" pickOnBounds="true" preserveRatio="true" GridPane.halignment="LEFT" GridPane.valignment="CENTER">
+                    <GridPane.margin>
+                        <Insets left="10.0" />
+                    </GridPane.margin>
+                </ImageView>
+                <Button minWidth="140.0" mnemonicParsing="false" prefHeight="30.0" prefWidth="140.0" style="-fx-background-color: transparent;" text="My Profile" textFill="#3b3b3b" GridPane.columnIndex="4" GridPane.halignment="CENTER" GridPane.valignment="CENTER">
+                    <font>
+                        <Font name="Roboto" size="16.0" />
+                    </font>
+                    <graphic>
+                        <HBox alignment="CENTER" prefHeight="30.0" prefWidth="30.0">
+                            <ImageView fx:id="profileImage" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
+                        </HBox>
+                    </graphic>
+                </Button>
+            <Button mnemonicParsing="false" onAction="#logoutButton" styleClass="menu-button" stylesheets="@../gui/menuButton.css" text="Logout" textFill="WHITE" GridPane.columnIndex="2">
+               <font>
+                  <Font name="Roboto" size="16.0" />
+               </font>
+                <graphic>
+                    <HBox alignment="CENTER" prefHeight="30.0" prefWidth="30.0">
+                        <ImageView fx:id="logoutImage" fitHeight="25.0" fitWidth="25.0" pickOnBounds="true" preserveRatio="true" />
+                    </HBox>
+                </graphic>
+            </Button>
+            </GridPane>
+        </top>
+        <center>
+            <GridPane BorderPane.alignment="CENTER">
+                <columnConstraints>
+                    <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                    <ColumnConstraints hgrow="NEVER" minWidth="630.0" prefWidth="630.0" />
+                    <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="100.0" />
+                </columnConstraints>
+                <rowConstraints>
+                    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                    <RowConstraints minHeight="400.0" prefHeight="400.0" vgrow="NEVER" />
+                    <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                </rowConstraints>
+                <AnchorPane fx:id="profileWrapper" prefHeight="200.0" prefWidth="200.0" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+            </GridPane>
+        </center>
+        <left>
+            <BorderPane fx:id="registerVehicleWrapper" prefHeight="695.0" prefWidth="475.0" BorderPane.alignment="CENTER" />
+        </left>
+    </BorderPane>
+</AnchorPane>
